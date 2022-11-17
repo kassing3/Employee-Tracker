@@ -10,7 +10,13 @@ const app = express();
 //Stores Department & Role Choices for Inquirer Prompts
 const departmentArr = [];
 const roleArr = [];
-const employeeArr = [];
+
+const none = {
+        value: "null",
+        title: "None"
+};
+
+const employeeArr = [none.title];
 
 // Express middleware
 app.use(express.urlencoded({ extended: false }));
@@ -48,16 +54,12 @@ function departmentChoices() {
 
         for (var i = 0; i < res.length; i++) {
 
-            if (departmentArr.indexOf(res[i].name) === -1) {
+            if (!departmentArr.includes(res[i].name)) {
                 departmentArr.push(res[i].name);
             }; 
         }
     });
-
-
-    return departmentArr
-
-
+     return departmentArr
 };
 
 //Generates the Array of Role Choices for Adding Role Prompts
@@ -70,7 +72,11 @@ function roleChoices() {
         }
 
         for (var i = 0; i < res.length; i++) {
-            roleArr.push(res[i].title);
+
+            if (!roleArr.includes(res[i].title)) {
+                roleArr.push(res[i].title);
+            };
+
         }
     });
 
@@ -88,16 +94,15 @@ function employeeChoices() {
             throw err;
         }
 
+        
         for (var i = 0; i < res.length; i++) {
-            employeeArr.push(res[i].name);
+
+            if (!employeeArr.includes(res[i].name)) {
+                employeeArr.push(res[i].name);
+            };
+
         }
     });
-
-    const none = {
-        value: null,
-        title: "None"
-    }
-    employeeArr.push(none.title);
 
     return employeeArr
 
@@ -141,7 +146,6 @@ function launchMenu() {
                 break;
             case "Exit":
                 process.exit();
-                break;
         }
     })
 }
@@ -284,7 +288,7 @@ function addRole() {
             type: "list",
             name: "department",
             message:"Which Department does this Role belong to?",
-            choices: departmentChoices ()
+            choices: departmentChoices()
         },
     ]).then ((answers)=> {
 
@@ -360,13 +364,22 @@ function addEmployee() {
     ]).then ((answers)=> {
 
         const roleID = roleChoices().indexOf(answers.role) + 1;
-        const managerID = employeeChoices().indexOf(answers.manager) + 1;
+        
+        const managerID = (answers) => { 
+
+
+            const manager = employeeChoices().indexOf(answers.manager);
+                
+            if (manager === 0) {
+                    return null;
+            } 
+                
+
+            return manager;
+        };
 
         const sql = `INSERT INTO employee (first_name, last_name, role_id, manager_id)
-            VALUES (${JSON.stringify(answers.first_name)}, 
-                    ${JSON.stringify(answers.first_name)}, 
-                    ${roleID}, 
-                    ${managerID})`;
+            VALUES (${JSON.stringify(answers.first_name)}, ${JSON.stringify(answers.first_name)}, ${roleID}, ${managerID(answers)})`;
 
        
         db.query(sql);
@@ -407,7 +420,7 @@ function addEmployee() {
 
       
             setTimeout(() => {
-                console.log("Thank you for adding a Department!")
+                console.log("Thank you for adding an Employee!")
                 launchMenu();
             }, 500);
     });
@@ -418,6 +431,11 @@ function updateEmployeeRole() {
     return inquire
     .prompt([
         {
+            type: "confirm",
+            name: "confirm",
+            message: "Are you sure you want to update?",
+        },
+        {
             type: "list",
             name: "employee",
             message: "Which Employee's Role would you like to update?",
@@ -427,12 +445,14 @@ function updateEmployeeRole() {
             type: "list",
             name: "role",
             message: `What role do you want to assign this Employee to?`,
-            choices: roleChoices()
+            choices: roleChoices(),
+            when: (answers) => answers.employee !== "None"
         },
     ]).then ((answers)=> {
 
-        const employeeID = employeeChoices().indexOf(answers.employee) + 1;
+        const employeeID = employeeChoices().indexOf(answers.employee);
         const roleID = roleChoices().indexOf(answers.role) + 1;
+
 
         const sql = ` UPDATE employee
                       SET role_id = ${roleID}
@@ -477,7 +497,7 @@ function updateEmployeeRole() {
 
       
             setTimeout(() => {
-                console.log("Thank you for adding a Department!")
+                console.log("Role has been updated!")
                 launchMenu();
             }, 500);
     });
